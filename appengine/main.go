@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"cloud.google.com/go/compute/metadata"
@@ -30,6 +31,9 @@ const (
 )
 
 var token = func() string {
+	if tok := os.Getenv("GITHUB_TOKEN"); tok != "" {
+		return tok
+	}
 	tok, err := metadata.ProjectAttributeValue("github_token")
 	if err != nil {
 		log.Fatalf("Could not get token: %v", err)
