@@ -18,6 +18,7 @@ func main() {
 		"project": {os.Getenv("REPORT_PROJECT")},
 		"org":     {os.Getenv("REPORT_ORG")},
 		"repo":    {os.Getenv("REPORT_REPO")},
+		"context": {os.Getenv("REPORT_CONTEXT")},
 	}.Encode()
 	log.Printf("Reporting: %q", url)
 	resp, err := http.Post(url, "text/plain", nil)

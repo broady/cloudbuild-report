@@ -10,7 +10,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
+	"unicode"
 
 	"cloud.google.com/go/compute/metadata"
 
@@ -26,8 +28,8 @@ import (
 )
 
 const (
-	statusContext = "ci/cloudbuild"
-	robotAccount  = "cloudbuild-report@appspot.gserviceaccount.com"
+	baseContext  = "ci/cloudbuild"
+	robotAccount = "cloudbuild-report@appspot.gserviceaccount.com"
 )
 
 var token = func() string {
@@ -79,6 +81,21 @@ func handleReport(w http.ResponseWriter, r *http.Request) {
 	if id == "" || proj == "" || org == "" || repo == "" {
 		http.Error(w, "Missing parameter buildID, project, org, or repo.", http.StatusBadRequest)
 		return
+	}
+
+	// If the "context" parameter is present, use it as a suffix for the GitHub
+	// status context (e.g., "foo" -> "ci/cloudbuild/foo")
+	context := baseContext
+	if c := r.FormValue("context"); c != "" {
+		context = context + "/" + strings.Map(func(r rune) rune {
+			if r > unicode.MaxASCII {
+				return -1
+			}
+			if unicode.IsDigit(r) || unicode.IsLetter(r) {
+				return r
+			}
+			return -1
+		}, c)
 	}
 
 	b, err := cb.Projects.Builds.Get(proj, id).Do()
@@ -143,7 +160,7 @@ func handleReport(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			status := &github.RepoStatus{
-				Context:     github.String(statusContext),
+				Context:     github.String(context),
 				State:       github.String(ghStatus),
 				TargetURL:   github.String(url),
 				Description: github.String(desc),
